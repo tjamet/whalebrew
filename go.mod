@@ -2,6 +2,8 @@ module github.com/whalebrew/whalebrew
 
 go 1.12
 
+replace github.com/Sirupsen/logrus => github.com/sirupsen/logrus v1.4.3-0.20190807103436-de736cf91b92
+
 require (
 	github.com/Azure/go-ansiterm v0.0.0-20170929234023-d6e3b3328b78 // indirect
 	github.com/Masterminds/semver v1.5.0 // indirect
