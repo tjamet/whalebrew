@@ -2,7 +2,6 @@ package client
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"os/exec"
 
@@ -29,27 +28,19 @@ func NewClient() (*Client, error) {
 	}, nil
 }
 
-func(c *Client) ImageInspect(ctx context.Context, imageName string) (*types.ImageInspect, error) {
-	imageInspect, _, err := c.ImageInspectWithRaw(ctx, imageName)
-	if err == nil {
-		return &imageInspect, nil
-	}
-
+func (c *Client) PullImageIfNotExists(ctx context.Context, imageName string) error {
+	_, _, err := c.ImageInspectWithRaw(ctx, imageName)
 	if client.IsErrNotFound(err) {
-		fmt.Printf("Unable to find image '%s' locally\n", imageName)
 		if err = pullImage(imageName); err != nil {
-			return nil, err
+			return err
 		}
-		// retry
-		imageInspect, _, err = c.ImageInspectWithRaw(ctx, imageName)
-		if err != nil {
-			return nil, err
-		}
-
-		return &imageInspect, nil
-	} else {
-		return nil, fmt.Errorf("failed to inspect docker image: %v", err)
 	}
+	return err
+}
+
+func (c *Client) ImageInspect(ctx context.Context, imageName string) (*types.ImageInspect, error) {
+	imageInspect, _, err := c.ImageInspectWithRaw(ctx, imageName)
+	return &imageInspect, err
 }
 
 func pullImage(image string) error {

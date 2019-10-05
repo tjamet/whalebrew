@@ -10,16 +10,19 @@ import (
 	"github.com/spf13/viper"
 	"github.com/whalebrew/whalebrew/client"
 	"github.com/whalebrew/whalebrew/hooks"
+	"github.com/whalebrew/whalebrew/inspector"
 	"github.com/whalebrew/whalebrew/packages"
 )
 
 var customPackageName string
+var runtimeImage string
 var customEntrypoint string
 var forceInstall bool
 var assumeYes bool
 
 func init() {
 	installCommand.Flags().StringVarP(&customPackageName, "name", "n", "", "Name to give installed package. Defaults to image name.")
+	installCommand.Flags().StringVarP(&runtimeImage, "use-image", "", "", "The image proviting the actual program to run. Defaults to the same as the package image")
 	installCommand.Flags().StringVarP(&customEntrypoint, "entrypoint", "e", "", "Alternate entrypoint to run the image with. Defaults to image entrypoint.")
 	installCommand.Flags().BoolVarP(&forceInstall, "force", "f", false, "Replace existing package if already exists. Defaults to false.")
 	installCommand.Flags().BoolVarP(&assumeYes, "assume-yes", "y", false, "Assume 'yes' as answer to all prompts and run non-interactively. Defaults to false.")
@@ -35,10 +38,10 @@ var installCommand = &cobra.Command{
 			return cmd.Help()
 		}
 		if len(args) > 1 {
-			return fmt.Errorf("Only one image can be installed at a time")
+			return fmt.Errorf("Only one package image can be installed at a time")
 		}
 
-		imageName := args[0]
+		packageImage := args[0]
 
 		cli, err := client.NewClient()
 		if err != nil {
@@ -47,16 +50,31 @@ var installCommand = &cobra.Command{
 
 		ctx := context.Background()
 
-		imageInspect, err := cli.ImageInspect(ctx, imageName)
+		if runtimeImage == "" {
+			runtimeImage = packageImage
+		}
+		// Make sure the program is ready to be run
+		cli.PullImageIfNotExists(ctx, runtimeImage)
+		var imageInspector inspector.Inspector
+		if runtimeImage != packageImage {
+			// Docker does not have the image in cache locally, prevent downloading the full image, just download what is required
+			imageInspector = &inspector.Registry{}
+		} else {
+			imageInspector = &inspector.DockerDaemon{
+				Client: cli,
+			}
+		}
+
+		imageInspect, err := imageInspector.Inspect(ctx, packageImage)
 		if err != nil {
 			return err
 		}
-		
+
 		if imageInspect.Config.Entrypoint == nil {
-			return fmt.Errorf("the image '%s' is not compatible with Whalebrew: it does not have an entrypoint", imageName)
+			return fmt.Errorf("the image '%s' is not compatible with Whalebrew: it does not have an entrypoint", packageImage)
 		}
 
-		pkg, err := packages.NewPackageFromImage(imageName, *imageInspect)
+		pkg, err := packages.NewPackageFromImage(packageImage, *imageInspect)
 		if err != nil {
 			return err
 		}
@@ -113,7 +131,7 @@ var installCommand = &cobra.Command{
 			}
 		}
 
-		if err := hooks.Run("pre-install", imageName, pkg.Name); err != nil {
+		if err := hooks.Run("pre-install", packageImage, pkg.Name); err != nil {
 			return fmt.Errorf("pre install script failed: %s", err.Error())
 		}
 
@@ -131,11 +149,10 @@ var installCommand = &cobra.Command{
 		}
 
 		if hasInstall {
-			fmt.Printf("🐳  Modified %s to use %s\n", path.Join(pm.InstallPath, pkg.Name), imageName)
+			fmt.Printf("🐳  Modified %s to use %s\n", path.Join(pm.InstallPath, pkg.Name), packageImage)
 		} else {
-			fmt.Printf("🐳  Installed %s to %s\n", imageName, path.Join(pm.InstallPath, pkg.Name))
+			fmt.Printf("🐳  Installed %s to %s\n", packageImage, path.Join(pm.InstallPath, pkg.Name))
 		}
 		return nil
 	},
 }
-
