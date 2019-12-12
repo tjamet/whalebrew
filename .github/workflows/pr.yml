@@ -1,0 +1,16 @@
+name: CI
+
+on: [push,pull_request]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@master
+    - name: run tests
+      run: go test -race -coverprofile=coverage.txt -covermode=atomic ./...
+    - uses: codecov/codecov-action@v1
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }} #required
