@@ -1,0 +1,23 @@
+name: Update Readme
+on: 
+  release:
+    types: [published]
+
+jobs:
+  update-readme:
+    name: Update Readme
+    runs-on: ubuntu-latest
+    steps:
+
+    - name: Check out code into the Go module directory
+      uses: actions/checkout@v1
+
+    - name: Update Readme
+      run: sed -i 's,https://github.com/whalebrew/whalebrew/releases/download/.*/whalebrew-,https://github.com/whalebrew/whalebrew/releases/download/${{ github.event.release.name }}/whalebrew-,' README.md
+
+    - name: Publish readme
+      run: |
+        git add README.md
+        git config --global user.name "whalebrew-bot"
+        git config --global user.email "whalebrew@users.noreply.github.com"
+        git commit -m '[Auto] update download URL'
