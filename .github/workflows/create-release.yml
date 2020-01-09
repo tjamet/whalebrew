@@ -1,7 +1,8 @@
 name: Close milestone and create release
 on:
     milestone:
-        type: closed
+        types:
+        - closed
 jobs:
     update_version:
         name: Update version
@@ -12,7 +13,7 @@ jobs:
         - name: Check out code into the Go module directory
           uses: actions/checkout@v2-beta
         
-        - name: Update Readme
+        - name: Create version
           run: |
             sed -i 's:const Version.*:const Version = "${{ github.event.milestone.title }}":' version/version.go
             (
@@ -24,7 +25,7 @@ jobs:
             ) > CHANGELOG.md.new
             mv CHANGELOG.md.new CHANGELOG.md
         
-        - name: Publish readme
+        - name: Publish version
           run: |
             git add version/version.go CHANGELOG.md
             git config --global user.name "whalebrew-bot"
@@ -33,3 +34,20 @@ jobs:
             git remote -vvv
             git config --global credential.helper store
             git push origin HEAD:refs/heads/master
+
+        - name: Create Release
+          id: create_release
+          uses: actions/github-script@0.4.0
+          with:
+            github-token: ${{secrets.GITHUB_TOKEN}}
+            script: |
+                github.repos.createRelease({
+                    owner: '${{ github.event.repository.owner.login }}',
+                    repo: '${{ github.event.repository.name }}',
+                    tag_name: '${{ github.event.milestone.title }}',
+                    target_commitish: 'master',
+                    name: '${{ github.event.milestone.title }}',
+                    body: '${{ github.event.milestone.description }}',
+                    draft: false,
+                    prerelease: false
+                })
