@@ -1,0 +1,40 @@
+name: Pull Request workflows
+on: [pull_request]
+
+jobs:
+
+    dump:
+        name: dump
+        runs-on: ubuntu-latest
+        steps:
+            
+        - name: rebase pull request
+          run: echo "${{toJSON(github)}}"
+
+
+    rebase:
+        if: github.pull_request.rebaseable
+        name: Rebase Pull Request
+        runs-on: ubuntu-latest
+        steps:
+            
+        - name: rebase pull request
+          run: echo "${{toJSON(github)}}"
+
+    merge:
+        if: github.pull_request.mergeable
+        name: merge Pull Request
+        runs-on: ubuntu-latest
+        steps:
+            
+        - name: merge pull request
+          run: echo "${{toJSON(github)}}"
+
+    milestone:
+        if: github.action == 'closed' && github.pull_request.merged
+        name: Update Milestone
+        runs-on: ubuntu-latest
+        steps:
+            
+        - name: Update Milestone
+          run: echo "${{toJSON(github)}}"
