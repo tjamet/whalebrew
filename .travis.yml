@@ -3,11 +3,5 @@ go:
 - 1.12
 install:
 - go get -u golang.org/x/lint/golint
-- go get golang.org/x/tools/cmd/goimports
 script:
-- FIXED=$(goimports ./... | wc -l); if [ $FIXED -gt 0 ]; then echo "goimports - $FIXED file(s) not formatted correctly, please run goimports to fix this." && exit 1; fi
 - golint ./...
-- export GO111MODULE=on
-- travis_retry go mod download
-- go test -race -coverprofile=coverage.txt -covermode=atomic ./...
-- curl -s https://codecov.io/bash | bash
