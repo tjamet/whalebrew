@@ -1,4 +1,4 @@
-name: Go
+name: Go CI
 on: [push, pull_request]
 
 jobs:
@@ -60,3 +60,10 @@ jobs:
 
     - name: Build
       run: go build -v .
+
+    - name: run tests
+      run: go test -v -race -coverprofile=coverage.txt -covermode=atomic ./...
+
+    - uses: codecov/codecov-action@v1
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }} #required
