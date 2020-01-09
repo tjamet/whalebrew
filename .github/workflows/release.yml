@@ -1,15 +1,15 @@
-name: Build release assets
+name: Update release assets
 on: 
   release:
-    types: [created, edited, prereleased]
+    types: [published]
 
 jobs:
-  update-readme:
+  build_assets:
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest]
         go-version: [1.12]
-    name: Update Readme
+    name: Build assets
     runs-on: ${{ matrix.os }}
     steps:
 
@@ -41,3 +41,27 @@ jobs:
         asset_path: ./${{ steps.build.outputs.artifact_name }}
         asset_name: ${{ steps.build.outputs.artifact_name }}
         asset_content_type: application/octet-stream
+
+
+  update_readme:
+    needs:
+    - build_assets
+    name: Update Readme
+    runs-on: ubuntu-latest
+    steps:
+
+    - name: Check out code into the Go module directory
+      uses: actions/checkout@v2-beta
+
+    - name: Update Readme
+      run: sed -i 's,https://github.com/.*/releases/download/.*/whalebrew-,https://github.com/whalebrew/whalebrew/releases/download/${{ github.event.release.name }}/whalebrew-,' README.md
+
+    - name: Publish readme
+      run: |
+        git add README.md
+        git config --global user.name "whalebrew-bot"
+        git config --global user.email "whalebrew@users.noreply.github.com"
+        git commit -m '[Auto] update download URL'
+        git remote -vvv
+        git config --global credential.helper store
+        git push origin HEAD:refs/heads/master
