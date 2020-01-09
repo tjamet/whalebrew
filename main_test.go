@@ -13,6 +13,10 @@ import (
 )
 
 func TestRun(t *testing.T) {
+	if exec.Command("docker", "info").Run() != nil {
+		t.Skip("docker is not reachable on the host")
+		return
+	}
 	defer os.RemoveAll(".whalebrew-tests")
 	os.Setenv("RUN_WHALEBREW", "true")
 	os.Setenv("WHALEBREW_INSTALL_PATH", ".whalebrew-tests")
