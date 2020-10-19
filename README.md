@@ -84,6 +84,8 @@ The images in the `whalebrew` organization are a set of images that are known to
     whalebrew   whalebrew/whalebrew
     whalesay    whalebrew/whalesay
 
+
+
 ### Uninstall packages
 
     $ whalebrew uninstall wget
