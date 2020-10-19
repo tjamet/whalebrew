@@ -1,5 +1,13 @@
 name: Go CI
-on: [push, pull_request]
+on: 
+  push:
+    branches:
+    - "**"
+    tags:
+    - "**"
+  pull_request:
+
+
 
 jobs:
 
