@@ -9,7 +9,7 @@ import (
 // Version is the current Whalebrew version
 // This flag is an interface for some builds like in homebrew:
 // https://github.com/Homebrew/homebrew-core/pull/144615
-var Version = "0.5.0-dev+from.sources"
+var Version = "0.4.2-dev.test2+from-sources"
 
 var parsedVersion = semver.MustParse(Version)
 
