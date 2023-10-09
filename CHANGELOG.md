@@ -1,5 +1,7 @@
 # Change log
 
+## Unreleased
+
 ## 0.5.0-rc1 - 2023-10-09
 
 ### Breaking changes
