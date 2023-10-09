@@ -12,6 +12,5 @@ FROM alpine
 RUN apk add --no-cache git
 RUN git config --global user.email "bot@whalebrew.gha"
 RUN git config --global user.name "Whalebrew release bot"
-RUN git config --global --add safe.directory /github/workspace
 COPY --from=build /bin/release /bin/release
-ENTRYPOINT ["/bin/release"]
+ENTRYPOINT ["sh", "-c", "git config --global --add safe.directory $PWD; exec /bin/release"]
