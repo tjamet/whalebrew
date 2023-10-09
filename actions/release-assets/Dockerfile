@@ -5,11 +5,11 @@ WORKDIR /src
 COPY go.* ./
 RUN go mod download
 COPY main.go ./
-RUN go build -o /bin/release .
+RUN go build -o /bin/release-assets .
 COPY main_test.go ./
 COPY resources ./resources
 RUN go test -v ./...
 
 FROM alpine
-COPY --from=build /bin/release /bin/release
-ENTRYPOINT ["/bin/release"]
+COPY --from=build /bin/release-assets /bin/release-assets
+ENTRYPOINT ["/bin/release-assets"]

@@ -15,4 +15,4 @@ jobs:
         # fetch all tags
         fetch-depth: 0
     - name: build docker image
-      run: docker build ./actions/release
+      run: docker build ./actions/release-assets

@@ -1,4 +1,4 @@
-module github.com/whalebrew/whalebrew/actions/release
+module github.com/whalebrew/whalebrew/actions/release-assets
 
 go 1.17
 

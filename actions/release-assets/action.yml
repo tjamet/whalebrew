@@ -1,4 +1,4 @@
-name: 'Upsert release'
+name: 'Upsert release assets'
 description: 'Creates or update a release for a given tag. All the artifacts are renewed in this release process.'
 inputs:
   tag_name:
