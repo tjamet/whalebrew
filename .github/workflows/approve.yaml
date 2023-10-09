@@ -11,6 +11,6 @@ jobs:
     - uses: hmarr/auto-approve-action@v3
       if: github.actor == 'tjamet'
     - uses: hmarr/auto-approve-action@v3
-      if: github.actor == 'test-whalebrew-release'
+      if: github.actor == 'test-whalebrew-release[bot]'
     - uses: hmarr/auto-approve-action@v3
       if: github.actor == 'dependabot[bot]'
