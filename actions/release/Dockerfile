@@ -10,7 +10,5 @@ RUN go build -o /bin/release .
 
 FROM alpine
 RUN apk add --no-cache git
-RUN git config --global user.email "bot@whalebrew.gha"
-RUN git config --global user.name "Whalebrew release bot"
 COPY --from=build /bin/release /bin/release
-ENTRYPOINT ["sh", "-c", "git config --global --add safe.directory $PWD; exec /bin/release"]
+ENTRYPOINT ["sh", "-c", "git config --global --add safe.directory $PWD; git config --global user.name 'Whalebrew release bot'; git config --global user.email 'bot@whalebrew.gha'; exec /bin/release"]
