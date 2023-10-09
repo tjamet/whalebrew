@@ -37,3 +37,12 @@ jobs:
         echo "${{ toJSON(steps.release-tree.outputs) }}"
         git push origin \
           "${{ steps.release-tree.outputs.release_sha }}:refs/heads/auto/release/0.5.0-rc1"
+    - name: Create Pull Request
+      uses: peter-evans/create-pull-request@v5
+      with:
+        token: ${{ steps.app-token.outputs.token }}
+        branch: "auto/release/0.5.0-rc1"
+        delete-branch: true
+        base: master
+        title: Create release 0.5.0-rc1
+        labels: auto,release
