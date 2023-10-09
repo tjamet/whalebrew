@@ -109,7 +109,12 @@ func main() {
 
 	version, ok := envHandler.GetInput("version")
 	if !ok {
-		envHandler.Errorf(`Unable to find version "github actioninput"`)
+		envHandler.Errorf(`Unable to find version "github action input"`)
+		exit(1)
+	}
+	step, ok := envHandler.GetInput("step")
+	if !ok {
+		envHandler.Errorf(`Unable to find step "github action input"`)
 		exit(1)
 	}
 	v, err := semver.NewVersion(version)
@@ -117,103 +122,112 @@ func main() {
 		envHandler.Errorf("Version %v is invalid: %v, it must follow the semver layout", version, err)
 		exit(1)
 	}
+	switch step {
+	case "create_release":
 
-	if v.Metadata() != "" {
-		envHandler.Errorf("Released version %v must not unclude build metadata", version)
-		exit(1)
-	}
-
-	versionWithDate := fmt.Sprintf("%s - %s", version, now().Format("2006-01-02"))
-
-	inTree, err := v.SetMetadata("from-sources")
-	if err != nil {
-		envHandler.Errorf("Failed to set build metadata to the version %v: %v", version, err)
-		exit(1)
-	}
-
-	releaseMessage, err := bump.ExtractReleaseMessage(fs)
-	if err != nil {
-		envHandler.Errorf("Failed to extract release message: %v", err)
-		exit(1)
-	}
-
-	// Generate the relevant version update
-	err = bump.BumpInTreeVersion(fs, inTree.String())
-	if err != nil {
-		envHandler.Errorf("unable to bump in-tree version")
-		exit(1)
-	}
-	if v.Prerelease() == "" {
-		err = bump.BumpREADMEVersion(fs, version)
-		if err != nil {
-			envHandler.Errorf("unable to bump README version")
+		if v.Metadata() != "" {
+			envHandler.Errorf("Released version %v must not unclude build metadata", version)
 			exit(1)
 		}
-	}
-	err = bump.ReleaseChangeLog(fs, versionWithDate)
-	if err != nil {
-		envHandler.Errorf("unable to release changelog")
-		exit(1)
-	}
-	err = git("add", "-u")
-	if err != nil {
-		envHandler.Errorf("unable to update git repository")
-		exit(1)
-	}
-	err = git("commit", "-m", "Release version "+v.String())
-	if err != nil {
-		envHandler.Errorf("unable to update git repository")
-		exit(1)
-	}
-	sha, err := headSha()
-	if err != nil {
-		envHandler.Errorf("failed to get head SHA")
-		exit(1)
-	}
-	envHandler.SetOutput("release_sha", sha)
 
-	err = git("tag", "-a", v.String(), "-m", versionWithDate, "-m", releaseMessage)
-	if err != nil {
-		envHandler.Errorf("unable to tag new release")
-		exit(1)
-	}
-	envHandler.SetOutput("release_tag", v.String())
+		versionWithDate := fmt.Sprintf("%s - %s", version, now().Format("2006-01-02"))
 
-	if v.Prerelease() == "" {
-		*v = v.IncPatch()
-		fmt.Println(v.String())
-	}
-	*v, err = v.SetPrerelease("dev")
-	if err != nil {
-		envHandler.Errorf("unable to set pre-release for the new version")
-		exit(1)
-	}
+		inTree, err := v.SetMetadata("from-sources")
+		if err != nil {
+			envHandler.Errorf("Failed to set build metadata to the version %v: %v", version, err)
+			exit(1)
+		}
 
-	err = bump.BumpInTreeVersion(fs, v.String())
-	if err != nil {
-		envHandler.Errorf("unable to bump in-tree version")
-		exit(1)
-	}
-	err = bump.StartUnreleased(fs)
-	if err != nil {
-		envHandler.Errorf("unable to open the change log for the new version")
-		exit(1)
-	}
+		// Generate the relevant version update
+		err = bump.BumpInTreeVersion(fs, inTree.String())
+		if err != nil {
+			envHandler.Errorf("unable to bump in-tree version")
+			exit(1)
+		}
+		if v.Prerelease() == "" {
+			err = bump.BumpREADMEVersion(fs, version)
+			if err != nil {
+				envHandler.Errorf("unable to bump README version")
+				exit(1)
+			}
+		}
+		err = bump.ReleaseChangeLog(fs, versionWithDate)
+		if err != nil {
+			envHandler.Errorf("unable to release changelog")
+			exit(1)
+		}
+		err = git("add", "-u")
+		if err != nil {
+			envHandler.Errorf("unable to update git repository")
+			exit(1)
+		}
+		err = git("commit", "-m", "Release version "+v.String())
+		if err != nil {
+			envHandler.Errorf("unable to update git repository")
+			exit(1)
+		}
+		sha, err := headSha()
+		if err != nil {
+			envHandler.Errorf("failed to get head SHA")
+			exit(1)
+		}
+		envHandler.SetOutput("release_sha", sha)
+	case "create_tag":
+		fmt.Println("not implemented")
+		os.Exit(1)
+		// releaseMessage, err := bump.ExtractReleaseMessage(fs)
+		// if err != nil {
+		// 	envHandler.Errorf("Failed to extract release message: %v", err)
+		// 	exit(1)
+		// }
 
-	err = git("add", "-u")
-	if err != nil {
-		envHandler.Errorf("unable to update git repository")
-		exit(1)
+		// err := git("tag", "-a", v.String(), "-m", versionWithDate, "-m", releaseMessage)
+		// if err != nil {
+		// 	envHandler.Errorf("unable to tag new release")
+		// 	exit(1)
+		// }
+		// envHandler.SetOutput("release_tag", v.String())
+
+	case "open_next_dev":
+		if v.Prerelease() == "" {
+			*v = v.IncPatch()
+			fmt.Println(v.String())
+		}
+		*v, err = v.SetPrerelease("dev")
+		if err != nil {
+			envHandler.Errorf("unable to set pre-release for the new version")
+			exit(1)
+		}
+
+		err = bump.BumpInTreeVersion(fs, v.String())
+		if err != nil {
+			envHandler.Errorf("unable to bump in-tree version")
+			exit(1)
+		}
+		err = bump.StartUnreleased(fs)
+		if err != nil {
+			envHandler.Errorf("unable to open the change log for the new version")
+			exit(1)
+		}
+
+		err = git("add", "-u")
+		if err != nil {
+			envHandler.Errorf("unable to update git repository")
+			exit(1)
+		}
+		err = git("commit", "-m", "Open development for version "+v.String())
+		if err != nil {
+			envHandler.Errorf("unable to update git repository")
+			exit(1)
+		}
+		sha, err := headSha()
+		if err != nil {
+			envHandler.Errorf("failed to get head SHA")
+			exit(1)
+		}
+		envHandler.SetOutput("dev_sha", sha)
+	default:
+		fmt.Fprintln(os.Stderr, "unknown step", step)
+		os.Exit(1)
 	}
-	err = git("commit", "-m", "Open development for version "+v.String())
-	if err != nil {
-		envHandler.Errorf("unable to update git repository")
-		exit(1)
-	}
-	sha, err = headSha()
-	if err != nil {
-		envHandler.Errorf("failed to get head SHA")
-		exit(1)
-	}
-	envHandler.SetOutput("dev_sha", sha)
 }

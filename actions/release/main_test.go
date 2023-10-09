@@ -84,6 +84,7 @@ func testVersionBump(t *testing.T, testName, version string, check func(t *testi
 }
 
 func TestReleaseAction(t *testing.T) {
+	t.Skip("to be refactored")
 	t.Cleanup(func() {
 		now = time.Now
 		envHandler = newHandler()

@@ -4,6 +4,9 @@ inputs:
   version:
     description: 'The name of the version'
     required: true
+  step:
+    required: true
+    description: 'The step to run. Either "create_release" or "open_next_dev"'
 outputs:
   release_tag:
     description: 'The exact git tag released'

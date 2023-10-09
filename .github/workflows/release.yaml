@@ -33,6 +33,7 @@ jobs:
       uses: ./actions/release
       with:
         version: 0.5.0-rc1
+        step: create_release
     # - run: |
     #     echo "${{ toJSON(steps.release-tree.outputs) }}"
     #     git push origin \
