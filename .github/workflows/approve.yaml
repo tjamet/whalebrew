@@ -10,4 +10,6 @@ jobs:
     - uses: hmarr/auto-approve-action@v3
       if: github.actor == 'tjamet'
     - uses: hmarr/auto-approve-action@v3
+      if: github.actor == 'test-whalebrew-release'
+    - uses: hmarr/auto-approve-action@v3
       if: github.actor == 'dependabot[bot]'
