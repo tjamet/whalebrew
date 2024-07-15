@@ -1,0 +1,88 @@
+name: Release
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, closed]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to build'
+        required: true
+
+jobs:
+    build:
+        if: ${{ github.event.inputs.tag }}
+        uses: ./.github/workflows/go.yml
+        with:
+            tag: ${{ github.event.inputs.tag }}
+
+    create-release:
+        needs: build
+        if: ${{ github.event.inputs.tag }}
+        name: Create release
+        runs-on: ubuntu-latest
+        outputs:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+        steps:
+        
+        - uses: actions/create-github-app-token@v1
+          id: app-token
+          with:
+            app-id: ${{ vars.WHALEBREW_RELEASE_APP_ID }}
+            private-key: ${{ secrets.WHALEBREW_RELEASE_SIGNING_KEY }}
+        
+        - name: Check out code into the Go module directory
+          uses: actions/checkout@v4
+          with:
+            # https://github.com/actions/checkout#fetch-all-history-for-all-tags-and-branches
+            # fetch all tags
+            fetch-depth: 0
+            token: ${{ steps.app-token.outputs.token }}
+        
+        - name: Download assets
+          id: download
+          uses: actions/download-artifact@v3
+          with:
+            path: release/artifacts
+        
+        - name: Commit changelog
+          run: |
+            cp ${{ steps.download.outputs.download-path }}/CHANGELOG.md/CHANGELOG.md CHANGELOG.md
+            sed -i.old 's,https://github.com/whalebrew/whalebrew/releases/download/[^/]*/whalebrew,https://github.com/whalebrew/whalebrew/releases/download/${{ github.event.inputs.tag }}/whalebrew,' README.md
+            rm README.md.old
+            git config --local user.email "whalebrew@users.noreply.github.com"
+            git config --local user.name "whalebrew release bot"
+            git add CHANGELOG.md README.md
+            git commit -m "Release ${{ github.event.inputs.tag }}"
+
+        - name: Create a draft Release
+          id: create_release
+          uses: ./actions/release
+          env:
+            GITHUB_TOKEN: ${{ steps.app-token.outputs.token }} # This token is provided by Actions, you do not need to create your own token
+          with:
+            tag_name: ${{ github.event.inputs.tag }}
+            target_commitish: ${{ github.sha}}
+            folder: ${{ steps.download.outputs.download-path }}
+            draft: true
+        - name: Dump release Info
+          run: |
+            echo "Release ID: ${{ steps.create_release.outputs.release_id }}"
+            echo "Release URL: ${{ steps.create_release.outputs.release_url }}"
+            echo "Release Upload URL: ${{ steps.create_release.outputs.release_upload_url }}"
+
+        - name: Create Pull Request
+          uses: peter-evans/create-pull-request@v5
+          with:
+            token: ${{ steps.app-token.outputs.token }}
+            branch: "auto/release/${{ github.event.inputs.tag }}"
+            delete-branch: true
+            body: |
+                This PR was automatically created by the release workflow.
+                You can check the content of the release [here](${{ steps.create_release.outputs.release_htmlurl }}).
+
+                Once this PR is approved, the release will be published automatically.
+                Should the base branch (${{ github.ref_name}}) be updated before this PR is merged, it will
+                be automatically closed, and its draft release deleted.
+            #base: master
+            title: Create release ${{ github.event.inputs.tag }}
+            labels: auto,release
