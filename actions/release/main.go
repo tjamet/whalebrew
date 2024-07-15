@@ -135,6 +135,7 @@ func main() {
 				TagName:         github.String(tag),
 				TargetCommitish: github.String("master"),
 				Body:            github.String(body),
+				Draft:           github.Bool(true),
 			})
 			if err != nil {
 				fmt.Println(err)
