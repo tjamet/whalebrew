@@ -120,6 +120,11 @@ func main() {
 		}
 	}
 	tag = strings.TrimPrefix(tag, "refs/tags/")
+
+	targetCommitish, ok := core.GetInput("target_commitish")
+	if !ok {
+		targetCommitish = "master"
+	}
 	var err error
 	var release *github.RepositoryRelease
 	body := core.GetInputOrDefault("body", "")
@@ -133,8 +138,9 @@ func main() {
 			release, _, err = gha.GitHub.Repositories.CreateRelease(context.Background(), gha.Context.Repo.Owner, gha.Context.Repo.Repo, &github.RepositoryRelease{
 				Name:            github.String(releaseName),
 				TagName:         github.String(tag),
-				TargetCommitish: github.String("master"),
+				TargetCommitish: github.String(targetCommitish),
 				Body:            github.String(body),
+				Draft:           github.Bool(true),
 			})
 			if err != nil {
 				fmt.Println(err)
