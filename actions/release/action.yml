@@ -4,8 +4,8 @@ inputs:
   tag_name:
     description: 'The name of the git tag generating the version'
     required: true
-  body:
-    description: 'The body of the release. This body will be used as a description of the release in the release page'
+  target_commitish:
+    description: 'The target commit to release'
   folder:
     description: 'The folder containing all the files to recursively upload'
 outputs:
