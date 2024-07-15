@@ -1,0 +1,59 @@
+name: Release
+on: 
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to build'
+        required: true
+
+jobs:
+    release:
+        name: create-release-pr
+        runs-on: ubuntu-latest
+        outputs:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+        steps:
+        
+        - uses: actions/create-github-app-token@v1
+          id: app-token
+          with:
+            app-id: ${{ vars.WHALEBREW_RELEASE_APP_ID }}
+            private-key: ${{ secrets.WHALEBREW_RELEASE_SIGNING_KEY }}
+        
+        - name: Check out code into the Go module directory
+          uses: actions/checkout@v4
+          with:
+            # https://github.com/actions/checkout#fetch-all-history-for-all-tags-and-branches
+            # fetch all tags
+            fetch-depth: 0
+        
+        - name: Commit changelog
+          run: |
+            sed -i.old "s:## Unreleased:## Unreleased\n\n## ${{ github.event.inputs.tag }} - $(date +%Y-%m-%d):"  CHANGELOG.md
+            rm CHANGELOG.md.old
+            sed -i.old 's,https://github.com/whalebrew/whalebrew/releases/download/[^/]*/whalebrew,https://github.com/whalebrew/whalebrew/releases/download/{{ github.event.inputs.tag }}/whalebrew,' README.md
+            rm README.md.old
+            git config --local user.email "whalebrew@users.noreply.github.com"
+            git config --local user.name "whalebrew release bot"
+            git add CHANGELOG.md README.md
+            git commit -m "Release ${{ github.event.inputs.tag }}"
+            git remote -vvv
+
+        - name: Create Pull Request
+          uses: peter-evans/create-pull-request@v5
+          with:
+            token: ${{ steps.app-token.outputs.token }}
+            branch: "auto/release/${{ github.event.inputs.tag }}"
+            delete-branch: true
+            #base: master
+            title: Create release ${{ github.event.inputs.tag }}
+            labels: auto,release
+
+        # - name: Create Release
+        #   id: create_release
+        #   uses: ./actions/release
+        #   env:
+        #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # This token is provided by Actions, you do not need to create your own token
+        #   with:
+        #     folder: ${{steps.download.outputs.download-path}}
+        #     tag_name: ${{ github.event.inputs.tag }}   
