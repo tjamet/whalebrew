@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"context"
 	"crypto/md5"
 	"crypto/sha1"
@@ -111,6 +112,30 @@ func uploadAsset(name string, release *github.RepositoryRelease, path string) er
 	return nil
 }
 
+func getReleaseChangeLog(path, tag string) string {
+	changeLog := ""
+	fd, err := os.Open(path)
+	if err != nil {
+		core.Warningf("failed to open CHANGELOG.md: %v. Won't create release body", err)
+	} else {
+		scanner := bufio.NewScanner(fd)
+		dumpReleaseNotes := false
+		for scanner.Scan() {
+			line := scanner.Text()
+			if dumpReleaseNotes {
+				if strings.HasPrefix(line, "## ") {
+					return strings.TrimSpace(changeLog)
+				}
+				changeLog += line + "\n"
+			}
+			if strings.HasPrefix(line, "## "+tag) {
+				dumpReleaseNotes = true
+			}
+		}
+	}
+	return changeLog
+}
+
 func main() {
 	// Create or update release
 	tag, ok := core.GetInput("tag_name")
@@ -120,11 +145,21 @@ func main() {
 		}
 	}
 	tag = strings.TrimPrefix(tag, "refs/tags/")
+
+	targetCommitish, ok := core.GetInput("target_commitish")
+	if !ok {
+		targetCommitish = "master"
+	}
+	isDraft, ok := core.GetInput("draft")
+	if !ok {
+		isDraft = "true"
+	}
 	var err error
 	var release *github.RepositoryRelease
-	body := core.GetInputOrDefault("body", "")
 
 	releaseName := fmt.Sprintf("%s %s", tag, time.Now().Format("2006-01-02"))
+
+	releaseChangeLog := getReleaseChangeLog("CHANGELOG.md", tag)
 
 	core.Group("upserting the release", func() {
 		release, _, err = gha.GitHub.Repositories.GetReleaseByTag(context.Background(), gha.Context.Repo.Owner, gha.Context.Repo.Repo, tag)
@@ -133,8 +168,9 @@ func main() {
 			release, _, err = gha.GitHub.Repositories.CreateRelease(context.Background(), gha.Context.Repo.Owner, gha.Context.Repo.Repo, &github.RepositoryRelease{
 				Name:            github.String(releaseName),
 				TagName:         github.String(tag),
-				TargetCommitish: github.String("master"),
-				Body:            github.String(body),
+				TargetCommitish: github.String(targetCommitish),
+				Body:            github.String(releaseChangeLog),
+				Draft:           github.Bool(isDraft == "true"),
 			})
 			if err != nil {
 				fmt.Println(err)
@@ -142,7 +178,7 @@ func main() {
 			}
 		} else {
 			core.Infof("Found existing release. Updating it with latest details")
-			release.Body = github.String(body)
+			release.Body = github.String(releaseChangeLog)
 			release.Name = github.String(releaseName)
 			release, _, err = gha.GitHub.Repositories.EditRelease(context.Background(), gha.Context.Repo.Owner, gha.Context.Repo.Repo, *release.ID, release)
 			if err != nil {
