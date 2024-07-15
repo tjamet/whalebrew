@@ -3,118 +3,122 @@ on:
   push:
     branches:
     - "**"
-    tags:
-    - "**"
   pull_request:
   merge_group:
+  workflow_call:
+    inputs:
+      tag:
+        description: 'Tag to build'
+        type: string
+        required: true
 
 jobs:
-
-  build:
-    strategy:
-      matrix:
-        os: 
-        - ubuntu-latest
-        arch:
-        - amd64
-        - arm
-        - arm64
-        go-version: ['1.20']
-        include:
-        - os: macos-latest
-          arch: amd64
-          go-version: '1.20'
-        - os: macos-latest
-          arch: arm64
-          go-version: '1.20'
-    name: Build
-    runs-on: ${{ matrix.os }}
-    steps:
-    - name: hello world
-      run: echo hello world
-
-    - name: Set up Go ${{ matrix.go-version }}
-      uses: actions/setup-go@v4
-      with:
-        go-version: ${{ matrix.go-version }}
-      id: go
-
-    - name: Check out code into the Go module directory
-      uses: actions/checkout@v4
-      with:
-        # https://github.com/actions/checkout#fetch-all-history-for-all-tags-and-branches
-        # fetch all tags
-        fetch-depth: 0    
-
-    - name: Map binary name
-      id: binary
-      run: |
-        os=$(uname -s)
-        case ${{ matrix.arch }} in
-          amd64) arch=x86_64 ;;
-          *)     arch=${{ matrix.arch }} ;;
-        esac
-        binary_name=whalebrew-${os}-${arch}
-        echo "Binary name: ${binary_name}"
-        echo "::set-output name=binary_name::${binary_name}"
-
-    - name: Build
-      id: build
-      run: |
-        now=$(date +'%Y-%m-%d')
-        GOARCH=${{ matrix.arch }} go build -v -ldflags "-X github.com/whalebrew/whalebrew/version.Version=$(git describe --always --tags --dirty)+${now}.${{ github.sha }}" -o ${{ steps.binary.outputs.binary_name }} .
-
-    
-    - name: Ensure binary works
-      run: ./${{ steps.binary.outputs.binary_name }} version
-      if: ${{ !startsWith(matrix.arch, 'arm') }}
-
-    - uses: actions/upload-artifact@v3
-      with:
-        name: ${{ steps.binary.outputs.binary_name }}
-        path: whalebrew-*
-
-    - name: run tests
-      run: go test -v -race -coverprofile=coverage.txt -covermode=atomic ./...
-
-    - uses: codecov/codecov-action@v3
-      with:
-        token: ${{ secrets.CODECOV_TOKEN }} #required
-
-  ok:
-    name: All CI checks are OK
+  test:
+    if: ${{ github.event_name }} == 'pull_request'
+    name: Test
     runs-on: ubuntu-latest
-    needs: build
     steps:
-    - run: echo OK
-    
-  release:
-    name: release
-    runs-on: ubuntu-latest
-    needs: build
-    if: ${{ startsWith(github.ref, 'refs/tags') }}
-    outputs:
-      upload_url: ${{ steps.create_release.outputs.upload_url }}
-    steps:
-    
-    - name: Check out code into the Go module directory
-      uses: actions/checkout@v4
+    - uses: actions/github-script@v7
       with:
-        # https://github.com/actions/checkout#fetch-all-history-for-all-tags-and-branches
-        # fetch all tags
-        fetch-depth: 0
+        script: |
+          github.rest.pullRequests.get({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            pull_number: context.issue.number
+          }).then(response => {
+            console.log(response.data);
+          });
+    - run: |
+        echo ${{ github.ref_name }} ${{ github.actor}}
 
-    - name: Download assets
-      id: download
-      uses: actions/download-artifact@v3
-      with:
-        path: release/artifacts
 
-    - name: Create Release
-      id: create_release
-      uses: ./actions/release
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # This token is provided by Actions, you do not need to create your own token
-      with:
-        folder: ${{steps.download.outputs.download-path}}
-        tag_name: ${{ github.ref }}
+  # build:
+  #   strategy:
+  #     matrix:
+  #       os: 
+  #       - ubuntu-latest
+  #       arch:
+  #       - amd64
+  #       - arm
+  #       - arm64
+  #       go-version: ['1.20']
+  #       include:
+  #       - os: macos-latest
+  #         arch: amd64
+  #         go-version: '1.20'
+  #       - os: macos-latest
+  #         arch: arm64
+  #         go-version: '1.20'
+  #   name: Build
+  #   runs-on: ${{ matrix.os }}
+  #   steps:
+  #   - name: hello world
+  #     run: echo hello world
+
+  #   - name: Set up Go ${{ matrix.go-version }}
+  #     uses: actions/setup-go@v4
+  #     with:
+  #       go-version: ${{ matrix.go-version }}
+  #     id: go
+
+  #   - name: Check out code into the Go module directory
+  #     uses: actions/checkout@v4
+  #     with:
+  #       # https://github.com/actions/checkout#fetch-all-history-for-all-tags-and-branches
+  #       # fetch all tags
+  #       fetch-depth: 0
+
+  #   - name: Compute CHANGELOG
+  #     id: changed_files
+  #     if: ${{ github.event.inputs.tag }}
+  #     run: |
+  #       sed -i.old "s:## Unreleased:## Unreleased\n\n## ${{ github.event.inputs.tag }} - $(date +%Y-%m-%d):"  CHANGELOG.md
+  #       rm CHANGELOG.md.old
+
+  #   - name: Map binary name
+  #     id: binary
+  #     run: |
+  #       os=$(uname -s)
+  #       case ${{ matrix.arch }} in
+  #         amd64) arch=x86_64 ;;
+  #         *)     arch=${{ matrix.arch }} ;;
+  #       esac
+  #       binary_name=whalebrew-${os}-${arch}
+  #       echo "Binary name: ${binary_name}"
+  #       echo "::set-output name=binary_name::${binary_name}"
+
+  #   - name: Build
+  #     id: build
+  #     run: |
+  #       now=$(date +'%Y-%m-%d')
+  #       GOARCH=${{ matrix.arch }} go build -v -ldflags "-X github.com/whalebrew/whalebrew/version.Version=$(git describe --always --tags --dirty)+${now}.${{ github.sha }}" -o ${{ steps.binary.outputs.binary_name }} .
+
+    
+  #   - name: Ensure binary works
+  #     run: ./${{ steps.binary.outputs.binary_name }} version
+  #     if: ${{ !startsWith(matrix.arch, 'arm') }}
+
+  #   - uses: actions/upload-artifact@v3
+  #     with:
+  #       name: ${{ steps.binary.outputs.binary_name }}
+  #       path: whalebrew-*
+
+  #   - uses: actions/upload-artifact@v3
+  #     if: ${{ matrix.os }} == 'ubuntu-latest' && ${{ matrix.arch }} == 'amd64'
+  #     with:
+  #       name: CHANGELOG.md
+  #       path: CHANGELOG.md
+
+  #   - name: run tests
+  #     run: go test -v -race -coverprofile=coverage.txt -covermode=atomic ./...
+
+  #   - uses: codecov/codecov-action@v3
+  #     with:
+  #       token: ${{ secrets.CODECOV_TOKEN }} #required
+
+  # ok:
+  #   name: All CI checks are OK
+  #   runs-on: ubuntu-latest
+  #   needs: build
+  #   steps:
+  #   - run: echo OK
